@@ -1,16 +1,19 @@
 #!/bin/bash
 docker-compose up -d
 
+echo "--- Sleeping..."
+sleep 15
 echo "--- Initializing timeld"
-export TIMELD_PASSWORD=`docker exec -it federation-tests_timeld-cli_1 "/usr/local/bin/node" "/timeld/init.mjs"`
+docker ps
+export TIMELD_PASSWORD=`docker exec -it federated-timesheets-tests-timeld-cli-1 "/usr/local/bin/node" "/timeld/init.mjs"`
 echo "--- Extracted key: $TIMELD_PASSWORD"
 
 echo "--- Installing tikiwiki"
-docker exec -u www-data -it federation-tests_tikiwiki_1 "/bin/sh" "/usr/local/bin/tiki-init.sh"
+docker exec -u www-data -it federated-timesheets-tests-tikiwiki-1 "/bin/sh" "/usr/local/bin/tiki-init.sh"
 
 echo "--- Setting up environment for prejournal"
 cp prejournal/testnet.env testnet.env
-docker cp testnet.env federation-tests_prejournal_1:/app/.env
+docker cp testnet.env federated-timesheets-tests-prejournal-1:/app/.env
 curl -d'["alice","alice123"]' http://localhost:8280/v1/register
 
 echo "--- Connecting prejournal to tiki and timeld"
@@ -22,13 +25,13 @@ echo "TIMELD_USERNAME=alice" >> testnet.env
 echo "TIMELD_TIMESHEET=alice/timesheet" >> testnet.env
 echo "TIMELD_PROJECT=alice/project" >> testnet.env
 echo "TIMELD_PASSWORD=$TIMELD_PASSWORD" >> testnet.env
-docker cp testnet.env federation-tests_prejournal_1:/app/.env
+docker cp testnet.env federated-timesheets-tests-prejournal-1:/app/.env
 
 echo "--- Entering timesheet entry in prejournal"
 curl -d'["23 Sep 2022","stichting","Federated Timesheets", 8, "This is the description to check for"]' http://alice:alice123@localhost:8280/v1/worked-hours
 
 echo "--- Fetching report from timeld"
-docker exec -it federation-tests_timeld-cli_1 "/usr/local/bin/node" "/timeld/report.mjs" > timeld-report.txt
+docker exec -it federated-timesheets-tests-timeld-cli-1 "/usr/local/bin/node" "/timeld/report.mjs" > timeld-report.txt
 echo "--- Fetching report from tikiwiki"
 curl -H "Authorization: Bearer testnet-supersecret-token" http://localhost:8180/api/trackers/1 > tiki-report.json
 
